@@ -1957,27 +1957,27 @@ class DecksWindow(Adw.ApplicationWindow):
         about.set_transient_for(self)
         about.set_modal(True)
         about.set_application_name("Decks")
-        about.set_developer_name("Antigravity (Google AI Studio)")
-        about.set_version("50.3")
+        about.set_developer_name("WOOSAH & Antigravity (Google AI Studio)")
+        about.set_version("1.0")
         about.set_application_icon("decks")
-        about.set_website("https://ai.studio")
-        about.set_support_url("https://ai.studio")
-        about.set_issue_url("https://github.com/google/ai-studio/issues")
+        about.set_website("https://github.com/Smiley-McSmiles/Decks")
+        about.set_support_url("https://github.com/Smiley-McSmiles/Decks")
+        about.set_issue_url("https://github.com/Smiley-McSmiles/Decks/issues")
         about.set_comments("Modern spaced repetition flashcards with FSRS algorithm and hardware-accelerated 3D animations.")
-        about.add_link("Troubleshooting", "https://wiki.gnome.org/Apps/Decks/Troubleshooting")
+        about.add_link("Troubleshooting", "https://gemini.google.com")
         about.set_developers([
             "Antigravity (Google AI Studio) - Lead Architect & Creator",
-            "The GNOME Project"
+            "WOOSAH"
         ])
         about.set_designers([
             "Antigravity (Google AI Studio)",
-            "The GNOME Project"
+            "WOOSAH"
         ])
         about.set_documenters([
             "Antigravity (Google AI Studio)",
-            "The GNOME Project"
+            "WOOSAH"
         ])
-        about.set_copyright("© 2026 Antigravity (Google AI Studio)")
+        about.set_copyright("© 2026 WOOSAH")
         about.set_license_type(Gtk.License.MIT_X11)
         about.present()
 
