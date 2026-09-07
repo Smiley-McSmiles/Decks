@@ -2597,7 +2597,9 @@ class DecksWindow(Adw.ApplicationWindow):
 
 class DecksApp(Adw.Application):
     def __init__(self):
-        super().__init__(application_id="org.gnome.Decks", flags=Gio.ApplicationFlags.FLAGS_NONE)
+        GLib.set_prgname("decks")
+        GLib.set_application_name("Decks")
+        super().__init__(application_id=None, flags=Gio.ApplicationFlags.FLAGS_NONE)
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda a, p: self.quit())
         self.add_action(quit_action)
@@ -2624,6 +2626,7 @@ class DecksApp(Adw.Application):
                 theme.add_search_path(os.path.join(script_dir, "icons"))
                 theme.add_search_path(os.path.join(script_dir, "icons", "hicolor", "scalable", "apps"))
                 theme.add_search_path(os.path.expanduser("~/.local/share/icons"))
+                theme.add_search_path(os.path.expanduser("~/.local/share/icons/hicolor"))
                 Gtk.Window.set_default_icon_name("decks")
         except Exception as e:
             print("Icon setup notice:", e)
