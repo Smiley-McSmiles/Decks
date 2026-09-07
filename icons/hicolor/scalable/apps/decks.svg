@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 94.984833 102.41033"
+   width="94.984833"
+   height="102.41033"
+   version="1.1"
+   id="svg42"
+   sodipodi:docname="decks.svg"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview42"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="7.3183685"
+     inkscape:cx="41.266028"
+     inkscape:cy="52.812317"
+     inkscape:window-width="1920"
+     inkscape:window-height="1005"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg42" />
+  <defs
+     id="defs21">
+    <!-- Card & Drop Shadows -->
+    <filter
+       id="deck-shadow"
+       x="0"
+       y="0"
+       width="1"
+       height="1">
+      <feDropShadow
+         dx="0"
+         dy="8"
+         stdDeviation="6"
+         flood-color="#000000"
+         flood-opacity="0.30" />
+    </filter>
+    <filter
+       id="card-shadow"
+       x="-0.0069444444"
+       y="-0.0053191489"
+       width="1.0138889"
+       height="1.0053191">
+      <feDropShadow
+         dx="-2"
+         dy="4"
+         stdDeviation="4"
+         flood-color="#000000"
+         flood-opacity="0.22" />
+    </filter>
+    <filter
+       id="bolt-shadow"
+       x="-0.013391371"
+       y="-0.0085227273"
+       width="1.0133914"
+       height="1.0085227">
+      <feDropShadow
+         dx="0"
+         dy="2"
+         stdDeviation="1.5"
+         flood-color="#783e00"
+         flood-opacity="0.35" />
+    </filter>
+    <filter
+       id="inner-tray-shadow"
+       x="0"
+       y="0"
+       width="1"
+       height="1">
+      <feDropShadow
+         dx="0"
+         dy="1"
+         stdDeviation="0.75"
+         flood-color="#000000"
+         flood-opacity="0.12" />
+    </filter>
+    <!-- Gradients: Adwaita Palette -->
+    <!-- Card 3: Deep Violet -->
+    <linearGradient
+       id="purpleCard"
+       x1="22.751858"
+       y1="17.580981"
+       x2="22.751858"
+       y2="94.9373"
+       gradientTransform="scale(0.87904907,1.1375929)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#9141ac"
+         id="stop1" />
+      <stop
+         offset="100%"
+         stop-color="#613583"
+         id="stop2" />
+    </linearGradient>
+    <!-- Card 2: Adwaita Blue -->
+    <linearGradient
+       id="blueCard"
+       x1="29.481229"
+       y1="15.874508"
+       x2="29.481229"
+       y2="95.247047"
+       gradientTransform="scale(0.8819171,1.1338934)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#3584e4"
+         id="stop3" />
+      <stop
+         offset="100%"
+         stop-color="#1a5fb4"
+         id="stop4" />
+    </linearGradient>
+    <!-- Card 1: Front Clean Index Card -->
+    <linearGradient
+       id="frontCard"
+       x1="38.433203"
+       y1="14.154428"
+       x2="38.433203"
+       y2="95.542388"
+       gradientTransform="scale(0.88465174,1.1303883)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#ffffff"
+         id="stop5" />
+      <stop
+         offset="75%"
+         stop-color="#fbfaf9"
+         id="stop6" />
+      <stop
+         offset="100%"
+         stop-color="#eeece8"
+         id="stop7" />
+    </linearGradient>
+    <!-- Front Card Bevel Base -->
+    <linearGradient
+       id="cardBevel"
+       x1="38.223756"
+       y1="16.900484"
+       x2="38.223756"
+       y2="97.84491"
+       gradientTransform="scale(0.88949918,1.1242281)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#d5d2cc"
+         id="stop8" />
+      <stop
+         offset="100%"
+         stop-color="#b6b3ac"
+         id="stop9" />
+    </linearGradient>
+    <!-- Flash Lightning Facets -->
+    <linearGradient
+       id="boltLeft"
+       x1="85.990956"
+       y1="21.746473"
+       x2="114.13345"
+       y2="49.888968"
+       gradientTransform="scale(0.63960215,1.5634719)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#ffeb78"
+         id="stop10" />
+      <stop
+         offset="100%"
+         stop-color="#f6d32d"
+         id="stop11" />
+    </linearGradient>
+    <linearGradient
+       id="boltRight"
+       x1="79.886378"
+       y1="25.110664"
+       x2="79.886378"
+       y2="57.606818"
+       gradientTransform="scale(0.73854895,1.3540064)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#f5c211"
+         id="stop12" />
+      <stop
+         offset="100%"
+         stop-color="#e66100"
+         id="stop13" />
+    </linearGradient>
+    <!-- Header Chip Gradient -->
+    <linearGradient
+       id="chipGrad"
+       x1="21.19973"
+       y1="49.811954"
+       x2="34.690468"
+       y2="49.811954"
+       gradientTransform="scale(2.0754981,0.48181206)"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#3584e4"
+         id="stop14" />
+      <stop
+         offset="100%"
+         stop-color="#1c71d8"
+         id="stop15" />
+    </linearGradient>
+    <!-- SRS Rating Dot Gradients -->
+    <linearGradient
+       id="dotRed"
+       x1="49.75"
+       y1="87.25"
+       x2="49.75"
+       y2="94.75"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#ff7b63"
+         id="stop16" />
+      <stop
+         offset="100%"
+         stop-color="#c01c28"
+         id="stop17" />
+    </linearGradient>
+    <linearGradient
+       id="dotYellow"
+       x1="66.25"
+       y1="87.25"
+       x2="66.25"
+       y2="94.75"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#f8e45c"
+         id="stop18" />
+      <stop
+         offset="100%"
+         stop-color="#e5a50a"
+         id="stop19" />
+    </linearGradient>
+    <linearGradient
+       id="dotGreen"
+       x1="82.75"
+       y1="87.25"
+       x2="82.75"
+       y2="94.75"
+       gradientUnits="userSpaceOnUse">
+      <stop
+         offset="0%"
+         stop-color="#57e389"
+         id="stop20" />
+      <stop
+         offset="100%"
+         stop-color="#26a269"
+         id="stop21" />
+    </linearGradient>
+  </defs>
+  <!-- Ambient Floor Shadow -->
+  <!-- CARD 3 (Violet, Fanned -14°) -->
+  <g
+     transform="rotate(-14,-6.4071778,108.18165)"
+     id="g24">
+    <!-- 3D Edge / Lip -->
+    <rect
+       x="20"
+       y="23"
+       width="68"
+       height="88"
+       rx="10"
+       fill="#4a2566"
+       id="rect21" />
+    <!-- Card Surface -->
+    <rect
+       x="20"
+       y="20"
+       width="68"
+       height="88"
+       rx="10"
+       fill="url(#purpleCard)"
+       id="rect22"
+       style="fill:url(#purpleCard)" />
+    <!-- Top Highlight -->
+    <rect
+       x="20.75"
+       y="20.75"
+       width="66.5"
+       height="86.5"
+       rx="9.25"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1.2"
+       stroke-opacity="0.25"
+       id="rect23" />
+    <!-- Card Back Motif (Concentric Frame) -->
+    <rect
+       x="25"
+       y="25"
+       width="58"
+       height="78"
+       rx="7"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1.5"
+       stroke-opacity="0.14"
+       id="rect24" />
+    <circle
+       cx="54"
+       cy="64"
+       r="12"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1.5"
+       stroke-opacity="0.14"
+       id="circle24" />
+  </g>
+  <!-- CARD 2 (Blue, Fanned -7°) -->
+  <g
+     transform="rotate(-7,-55.467178,153.42558)"
+     filter="url(#card-shadow)"
+     id="g28">
+    <!-- 3D Edge / Lip -->
+    <rect
+       x="26"
+       y="21"
+       width="70"
+       height="90"
+       rx="10"
+       fill="#154f91"
+       id="rect25" />
+    <!-- Card Surface -->
+    <rect
+       x="26"
+       y="18"
+       width="70"
+       height="90"
+       rx="10"
+       fill="url(#blueCard)"
+       id="rect26"
+       style="fill:url(#blueCard)" />
+    <!-- Top Highlight -->
+    <rect
+       x="26.75"
+       y="18.75"
+       width="68.5"
+       height="88.5"
+       rx="9.25"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1.2"
+       stroke-opacity="0.3"
+       id="rect27" />
+    <!-- Card Back Inset Frame -->
+    <rect
+       x="31"
+       y="23"
+       width="60"
+       height="80"
+       rx="7"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1.5"
+       stroke-opacity="0.18"
+       id="rect28" />
+    <!-- Decorative Center Wave Motif -->
+    <path
+       d="m 49,63 c 6,-5 18,5 24,0"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="2"
+       stroke-linecap="round"
+       stroke-opacity="0.2"
+       id="path28" />
+  </g>
+  <!-- CARD 1 (Front Active Flashcard, Upright) -->
+  <g
+     filter="url(#card-shadow)"
+     id="g42"
+     transform="translate(-11.515172,-13.420252)">
+    <!-- 3D Base Thickness -->
+    <rect
+       x="34"
+       y="19"
+       width="72"
+       height="91"
+       rx="10"
+       fill="url(#cardBevel)"
+       id="rect29"
+       style="fill:url(#cardBevel)" />
+    <!-- Front Face -->
+    <rect
+       x="34"
+       y="16"
+       width="72"
+       height="92"
+       rx="10"
+       fill="url(#frontCard)"
+       id="rect30"
+       style="fill:url(#frontCard)" />
+    <!-- Perimeter Bevel / Border -->
+    <rect
+       x="34.5"
+       y="16.5"
+       width="71"
+       height="91"
+       rx="9.5"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="1"
+       id="rect31" />
+    <rect
+       x="34"
+       y="16"
+       width="72"
+       height="92"
+       rx="10"
+       fill="none"
+       stroke="#000000"
+       stroke-opacity="0.08"
+       stroke-width="1"
+       id="rect32" />
+    <!-- Category Chip Header -->
+    <rect
+       x="44"
+       y="24"
+       width="28"
+       height="6.5"
+       rx="3.25"
+       fill="url(#chipGrad)"
+       id="rect33"
+       style="fill:url(#chipGrad)" />
+    <!-- Chip Highlight -->
+    <path
+       d="m 47.25,24.75 h 21.5"
+       stroke="#ffffff"
+       stroke-width="0.75"
+       stroke-linecap="round"
+       stroke-opacity="0.45"
+       id="path33" />
+    <!-- Card Counter Indicator Pill -->
+    <rect
+       x="76"
+       y="25"
+       width="18"
+       height="4.5"
+       rx="2.25"
+       fill="#deddda"
+       id="rect34" />
+    <!-- Card Ruling Lines (Index Card Text Texture) -->
+    <line
+       x1="44"
+       y1="38"
+       x2="96"
+       y2="38"
+       stroke="#e8e6e1"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="line34" />
+    <line
+       x1="44"
+       y1="49"
+       x2="96"
+       y2="49"
+       stroke="#e8e6e1"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="line35" />
+    <line
+       x1="44"
+       y1="60"
+       x2="96"
+       y2="60"
+       stroke="#e8e6e1"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="line36" />
+    <line
+       x1="44"
+       y1="71"
+       x2="96"
+       y2="71"
+       stroke="#e8e6e1"
+       stroke-width="1.5"
+       stroke-linecap="round"
+       id="line37" />
+    <!-- CENTRAL FLASH EMBLEM (3D Chiseled Lightning) -->
+    <g
+       filter="url(#bolt-shadow)"
+       id="g39">
+      <!-- Left Facet (Light Tone) -->
+      <path
+         d="M 73,34 55,56 h 12 l -8,22 z"
+         fill="url(#boltLeft)"
+         id="path37"
+         style="fill:url(#boltLeft)" />
+      <!-- Right Facet (Shade Tone) -->
+      <path
+         d="M 73,34 67,56 59,78 83,52 H 71 Z"
+         fill="url(#boltRight)"
+         id="path38"
+         style="fill:url(#boltRight)" />
+      <!-- Top Crisp Specular Edge -->
+      <path
+         d="M 73,34 55,56 h 12"
+         stroke="#ffffff"
+         stroke-width="0.75"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         fill="none"
+         stroke-opacity="0.6"
+         id="path39" />
+    </g>
+    <!-- SPACED REPETITION (SRS) STATUS TRAY -->
+    <!-- Recessed Tray Bar -->
+    <rect
+       x="45"
+       y="84"
+       width="50"
+       height="14"
+       rx="7"
+       fill="#e8e6e1"
+       filter="url(#inner-tray-shadow)"
+       id="rect39"
+       style="opacity:1" />
+    <rect
+       x="45.5"
+       y="84.5"
+       width="49"
+       height="13"
+       rx="6.5"
+       fill="none"
+       stroke="#000000"
+       stroke-width="0.75"
+       stroke-opacity="0.08"
+       id="rect40" />
+    <!-- Status Button 1: Again/Hard (Adwaita Red) -->
+    <circle
+       cx="53.5"
+       cy="91"
+       r="3.75"
+       fill="url(#dotRed)"
+       id="circle40"
+       style="fill:url(#dotRed)" />
+    <ellipse
+       cx="53.5"
+       cy="89.599998"
+       rx="1.8"
+       ry="0.89999998"
+       fill="#ffffff"
+       opacity="0.55"
+       id="ellipse40" />
+    <!-- Status Button 2: Good (Adwaita Yellow) -->
+    <circle
+       cx="70"
+       cy="91"
+       r="3.75"
+       fill="url(#dotYellow)"
+       id="circle41"
+       style="fill:url(#dotYellow)" />
+    <ellipse
+       cx="70"
+       cy="89.599998"
+       rx="1.8"
+       ry="0.89999998"
+       fill="#ffffff"
+       opacity="0.65"
+       id="ellipse41" />
+    <!-- Status Button 3: Easy (Adwaita Green) -->
+    <circle
+       cx="86.5"
+       cy="91"
+       r="3.75"
+       fill="url(#dotGreen)"
+       id="circle42"
+       style="fill:url(#dotGreen)" />
+    <ellipse
+       cx="86.5"
+       cy="89.599998"
+       rx="1.8"
+       ry="0.89999998"
+       fill="#ffffff"
+       opacity="0.55"
+       id="ellipse42" />
+  </g>
+  <!-- Card Top Gloss Catchlight -->
+</svg>
