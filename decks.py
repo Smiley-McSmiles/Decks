@@ -2488,7 +2488,7 @@ class DecksWindow(Adw.ApplicationWindow):
         about.set_modal(True)
         about.set_application_name("Decks")
         about.set_developer_name("WOOSAH & Antigravity (Google AI Studio)")
-        about.set_version("1.0")
+        about.set_version("1.1.0")
         about.set_application_icon("decks")
         about.set_website("https://github.com/Smiley-McSmiles/Decks")
         about.set_support_url("https://github.com/Smiley-McSmiles/Decks")
