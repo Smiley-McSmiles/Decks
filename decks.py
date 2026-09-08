@@ -13,6 +13,9 @@ import time
 import json
 import sqlite3
 import csv
+import io
+import re
+import html
 import ctypes
 import random
 import warnings
@@ -342,6 +345,370 @@ class FSRSEngine:
     def next_interval(cls, stability: float) -> float:
         interval = stability * (cls.DESIRED_RETENTION ** -1.0 - 1.0) / (0.90 ** -1.0 - 1.0)
         return max(1.0, round(interval, 1))
+
+
+class MarkdownMathParser:
+    """
+    High-performance Markdown and LaTeX Math parser that converts
+    Markdown and LaTeX math markup into native Pango Markup for GTK4.
+    Supports:
+    - Multi-line card backs with automatic paragraph & line break handling
+    - Markdown headers (#, ##, ###, ####), bold, italics, bold-italics, strikethrough,
+      highlights (==text==), underlines, inline code, code blocks, blockquotes,
+      bullet lists, numbered lists, task lists, and horizontal rules
+    - Full LaTeX math ($...$, $$...$$, \\[...\\], \\(...\\), [latex]...[/latex], [$]...[/$])
+      including fractions, roots, Greek letters, operators, subscripts, superscripts,
+      calculus symbols, set theory, arrows, and matrices.
+    """
+
+    GREEK = {
+        'alpha': 'α', 'beta': 'β', 'gamma': 'γ', 'delta': 'δ', 'epsilon': 'ε',
+        'varepsilon': 'ε', 'zeta': 'ζ', 'eta': 'η', 'theta': 'θ', 'vartheta': 'ϑ',
+        'iota': 'ι', 'kappa': 'κ', 'lambda': 'λ', 'mu': 'μ', 'nu': 'ν',
+        'xi': 'ξ', 'pi': 'π', 'varpi': 'ϖ', 'rho': 'ρ', 'varrho': 'ϱ',
+        'sigma': 'σ', 'varsigma': 'ς', 'tau': 'τ', 'upsilon': 'υ', 'phi': 'φ',
+        'varphi': 'ϕ', 'chi': 'χ', 'psi': 'ψ', 'omega': 'ω',
+        'Gamma': 'Γ', 'Delta': 'Δ', 'Theta': 'Θ', 'Lambda': 'Λ', 'Xi': 'Ξ',
+        'Pi': 'Π', 'Sigma': 'Σ', 'Upsilon': 'Υ', 'Phi': 'Φ', 'Psi': 'Ψ', 'Omega': 'Ω',
+    }
+
+    SYMBOLS = {
+        'pm': '±', 'mp': '∓', 'times': '×', 'div': '÷', 'cdot': '·', 'bullet': '•', 'circ': '°',
+        'leq': '≤', 'le': '≤', 'geq': '≥', 'ge': '≥', 'neq': '≠', 'ne': '≠',
+        'approx': '≈', 'equiv': '≡', 'sim': '∼', 'simeq': '≃', 'cong': '≅', 'propto': '∝',
+        'infty': '∞', 'partial': '∂', 'nabla': '∇', 'hbar': 'ℏ', 'ell': 'ℓ',
+        'in': '∈', 'notin': '∉', 'subset': '⊂', 'subseteq': '⊆', 'supset': '⊃', 'supseteq': '⊇',
+        'cup': '∪', 'cap': '∩', 'setminus': '∖', 'emptyset': '∅',
+        'forall': '∀', 'exists': '∃', 'nexists': '∄',
+        'to': '→', 'rightarrow': '→', 'leftarrow': '←', 'Rightarrow': '⇒', 'Leftarrow': '⇐',
+        'iff': '⇔', 'Leftrightarrow': '⇔', 'mapsto': '↦', 'nearrow': '↗', 'searrow': '↘',
+        'land': '∧', 'lor': '∨', 'neg': '¬', 'oplus': '⊕', 'otimes': '⊗',
+        'angle': '∠', 'parallel': '∥', 'perp': '⟂',
+        'int': '∫', 'iint': '∬', 'iiint': '∭', 'oint': '∮',
+        'sum': '∑', 'prod': '∏',
+        'mathbb{R}': 'ℝ', 'mathbb{C}': 'ℂ', 'mathbb{N}': 'ℕ', 'mathbb{Z}': 'ℤ', 'mathbb{Q}': 'ℚ',
+        'dots': '…', 'cdots': '…', 'ldots': '…', 'ddots': '⋱', 'vdots': '⋮',
+    }
+
+    ACCENTS = {
+        'hat': '\u0302', 'bar': '\u0304', 'vec': '\u20D7', 'dot': '\u0307',
+        'ddot': '\u0308', 'tilde': '\u0303'
+    }
+
+    FUNCTIONS = [
+        'sin', 'cos', 'tan', 'arcsin', 'arccos', 'arctan', 'sinh', 'cosh', 'tanh',
+        'ln', 'log', 'exp', 'det', 'dim', 'deg', 'gcd', 'hom', 'ker',
+        'min', 'max', 'sup', 'inf', 'lim', 'arg'
+    ]
+
+    @staticmethod
+    def _extract_braced_arg(s: str, start_pos: int):
+        """Extracts {argument} from string with balanced brace support."""
+        i = start_pos
+        while i < len(s) and s[i].isspace():
+            i += 1
+        if i >= len(s) or s[i] != '{':
+            return None, start_pos
+        start = i + 1
+        depth = 1
+        i += 1
+        while i < len(s) and depth > 0:
+            if s[i] == '{' and (i == 0 or s[i-1] != '\\'):
+                depth += 1
+            elif s[i] == '}' and (i == 0 or s[i-1] != '\\'):
+                depth -= 1
+                if depth == 0:
+                    return s[start:i], i + 1
+            i += 1
+        return None, start_pos
+
+    @staticmethod
+    def _extract_bracket_arg(s: str, start_pos: int):
+        """Extracts [argument] from string."""
+        i = start_pos
+        while i < len(s) and s[i].isspace():
+            i += 1
+        if i >= len(s) or s[i] != '[':
+            return None, start_pos
+        start = i + 1
+        depth = 1
+        i += 1
+        while i < len(s) and depth > 0:
+            if s[i] == '[' and (i == 0 or s[i-1] != '\\'):
+                depth += 1
+            elif s[i] == ']' and (i == 0 or s[i-1] != '\\'):
+                depth -= 1
+                if depth == 0:
+                    return s[start:i], i + 1
+            i += 1
+        return None, start_pos
+
+    @classmethod
+    def render_latex_expression(cls, expr: str) -> str:
+        """Converts a single LaTeX math expression into styled Pango markup."""
+        s = expr.strip()
+        if not s:
+            return ""
+
+        # Delimiter cleanup
+        s = re.sub(r'\\left\s*([(\[{|])', r'\1', s)
+        s = re.sub(r'\\right\s*([)\]}|])', r'\1', s)
+        s = re.sub(r'\\left\s*\\([{}])', r'\1', s)
+        s = re.sub(r'\\right\s*\\([{}])', r'\1', s)
+        s = re.sub(r'\\left\.', '', s)
+        s = re.sub(r'\\right\.', '', s)
+
+        # Spacing
+        s = re.sub(r'\\(?:[,;:! ]|quad|qquad)', ' ', s)
+
+        # Text wrappers
+        s = re.sub(r'\\(?:text|mathrm|operatorname)\{([^}]+)\}', r'\1', s)
+        s = re.sub(r'\\mathbf\{([^}]+)\}', r'<b>\1</b>', s)
+        s = re.sub(r'\\mathit\{([^}]+)\}', r'<i>\1</i>', s)
+        s = re.sub(r'\\mathtt\{([^}]+)\}', r'<tt>\1</tt>', s)
+
+        # Chemical / Math arrows
+        s = re.sub(r'\\xrightarrow\{([^}]+)\}', r'─(\1)→', s)
+        s = re.sub(r'\\xleftarrow\{([^}]+)\}', r'←(\1)─', s)
+
+        # Fractions with balanced brace parsing
+        out = []
+        i = 0
+        while i < len(s):
+            if s.startswith(r'\frac', i) or s.startswith(r'\dfrac', i):
+                cmd_len = 6 if s.startswith(r'\dfrac', i) else 5
+                num, next_pos = cls._extract_braced_arg(s, i + cmd_len)
+                if num is not None:
+                    den, end_pos = cls._extract_braced_arg(s, next_pos)
+                    if den is not None:
+                        rend_num = cls.render_latex_expression(num)
+                        rend_den = cls.render_latex_expression(den)
+                        out.append(f"<sup>{rend_num}</sup>⁄<sub>{rend_den}</sub>")
+                        i = end_pos
+                        continue
+            elif s.startswith(r'\sqrt', i):
+                next_pos = i + 5
+                n_arg, after_n = cls._extract_bracket_arg(s, next_pos)
+                if n_arg is not None:
+                    rad_arg, end_pos = cls._extract_braced_arg(s, after_n)
+                    if rad_arg is not None:
+                        rend_n = cls.render_latex_expression(n_arg)
+                        rend_rad = cls.render_latex_expression(rad_arg)
+                        out.append(f"<sup>{rend_n}</sup>√({rend_rad})")
+                        i = end_pos
+                        continue
+                else:
+                    rad_arg, end_pos = cls._extract_braced_arg(s, next_pos)
+                    if rad_arg is not None:
+                        rend_rad = cls.render_latex_expression(rad_arg)
+                        out.append(f"√({rend_rad})")
+                        i = end_pos
+                        continue
+
+            out.append(s[i])
+            i += 1
+        s = ''.join(out)
+
+        # Accents like \hat{x}, \vec{v}
+        for acc_cmd, comb in cls.ACCENTS.items():
+            pattern = re.escape('\\' + acc_cmd) + r'\{([a-zA-Z0-9])\}'
+            s = re.sub(pattern, lambda m, c=comb: m.group(1) + c, s)
+
+        # Greek letters
+        for name, sym in cls.GREEK.items():
+            pattern = re.escape('\\' + name) + r'(?![a-zA-Z])'
+            s = re.sub(pattern, sym, s)
+
+        # Mathematical symbols
+        for name, sym in cls.SYMBOLS.items():
+            pattern = re.escape('\\' + name) + r'(?![a-zA-Z])'
+            s = re.sub(pattern, sym, s)
+
+        # Limits / Sum / Int bounds
+        s = re.sub(r'\\lim_\{([^}]+)\}', r'lim<sub>\1</sub>', s)
+        s = re.sub(r'\\lim_([a-zA-Z0-9]+)', r'lim<sub>\1</sub>', s)
+
+        # Subscripts & Superscripts
+        s = re.sub(r'\^\{([^}]+)\}', r'<sup>\1</sup>', s)
+        s = re.sub(r'\^([a-zA-Z0-9+\-*=])', r'<sup>\1</sup>', s)
+        s = re.sub(r'_\{([^}]+)\}', r'<sub>\1</sub>', s)
+        s = re.sub(r'_([a-zA-Z0-9+\-*=])', r'<sub>\1</sub>', s)
+
+        # Function names
+        for f in cls.FUNCTIONS:
+            pattern = re.escape('\\' + f) + r'(?![a-zA-Z])'
+            s = re.sub(pattern, f, s)
+
+        return s
+
+    @classmethod
+    def render_markdown_and_math(cls, text: str, is_dark: bool = True) -> str:
+        """
+        Parses Markdown text with embedded LaTeX math ($...$, $$...$$, \\[...\\], \\(...\\))
+        and produces clean Pango markup suitable for GTK4 Labels.
+        """
+        if not text:
+            return ""
+
+        raw = text.replace('\r\n', '\n').replace('\r', '\n')
+
+        # 1. Protect & Extract Math Blocks
+        math_placeholders = []
+
+        def save_math(m, display=False):
+            content = m.group(1)
+            rendered = cls.render_latex_expression(content)
+            idx = len(math_placeholders)
+            if display:
+                rendered = f"\n<span size='large' weight='bold'>{rendered}</span>\n"
+            math_placeholders.append(rendered)
+            return f"@@MATH_{idx}@@"
+
+        raw = re.sub(r'\$\$([\s\S]+?)\$\$', lambda m: save_math(m, display=True), raw)
+        raw = re.sub(r'\\\[([\s\S]+?)\\\]', lambda m: save_math(m, display=True), raw)
+        raw = re.sub(r'\[latex\]([\s\S]+?)\[/latex\]', lambda m: save_math(m, display=True), raw)
+        raw = re.sub(r'\[\$\]([\s\S]+?)\[/\$\]', lambda m: save_math(m, display=False), raw)
+        raw = re.sub(r'\\\(([\s\S]+?)\\\)', lambda m: save_math(m, display=False), raw)
+        raw = re.sub(r'(?<!\\)\$([^\$\n]+?)(?<!\\)\$', lambda m: save_math(m, display=False), raw)
+
+        # 2. Extract & Protect Code Blocks
+        code_placeholders = []
+        def save_code_block(m):
+            code_content = m.group(2)
+            escaped = html.escape(code_content.strip())
+            bg_color = "#2a2a2a" if is_dark else "#e4e4e4"
+            fg_color = "#f6f5f4" if is_dark else "#222222"
+            block = f"<tt><span font_family='monospace' background='{bg_color}' foreground='{fg_color}'>\n{escaped}\n</span></tt>"
+            idx = len(code_placeholders)
+            code_placeholders.append(block)
+            return f"@@CODE_BLOCK_{idx}@@"
+
+        raw = re.sub(r'```([a-zA-Z0-9_\-]+)?\n([\s\S]+?)```', save_code_block, raw)
+
+        # 3. Extract & Protect Inline Code
+        inline_code_placeholders = []
+        def save_inline_code(m):
+            code_content = m.group(1)
+            escaped = html.escape(code_content)
+            bg_color = "#333333" if is_dark else "#ebebeb"
+            fg_color = "#e0e0e0" if is_dark else "#1a1a1a"
+            inline = f"<tt><span font_family='monospace' background='{bg_color}' foreground='{fg_color}'> {escaped} </span></tt>"
+            idx = len(inline_code_placeholders)
+            inline_code_placeholders.append(inline)
+            return f"@@INLINE_CODE_{idx}@@"
+
+        raw = re.sub(r'`([^`\n]+)`', save_inline_code, raw)
+
+        # 4. Parse Line-by-Line Markdown Elements
+        lines = raw.split('\n')
+        out_lines = []
+
+        quote_color = "#78aeed" if is_dark else "#1c71d8"
+        dim_color = "#9a9996" if is_dark else "#77767b"
+
+        for line in lines:
+            stripped = line.strip()
+
+            if re.match(r'^(?:---|\*\*\*|___)$', stripped):
+                out_lines.append(f"<span color='{dim_color}'>────────────────────────────────</span>")
+                continue
+
+            h1_m = re.match(r'^#\s+(.+)$', stripped)
+            if h1_m:
+                h_text = html.escape(h1_m.group(1))
+                out_lines.append(f"<span size='xx-large' weight='bold'>{h_text}</span>")
+                continue
+
+            h2_m = re.match(r'^##\s+(.+)$', stripped)
+            if h2_m:
+                h_text = html.escape(h2_m.group(1))
+                out_lines.append(f"<span size='x-large' weight='bold'>{h_text}</span>")
+                continue
+
+            h3_m = re.match(r'^###\s+(.+)$', stripped)
+            if h3_m:
+                h_text = html.escape(h3_m.group(1))
+                out_lines.append(f"<span size='large' weight='bold'>{h_text}</span>")
+                continue
+
+            h4_m = re.match(r'^####\s+(.+)$', stripped)
+            if h4_m:
+                h_text = html.escape(h4_m.group(1))
+                out_lines.append(f"<span weight='bold'>{h_text}</span>")
+                continue
+
+            quote_m = re.match(r'^>\s*(.+)$', stripped)
+            if quote_m:
+                q_text = html.escape(quote_m.group(1))
+                out_lines.append(f"<span color='{quote_color}'>▎</span> <i>{q_text}</i>")
+                continue
+
+            task_m = re.match(r'^[*\-+]\s+\[([ xX])\]\s+(.+)$', stripped)
+            if task_m:
+                checked = task_m.group(1).lower() == 'x'
+                bullet = "☑" if checked else "☐"
+                item_text = html.escape(task_m.group(2))
+                out_lines.append(f"  {bullet} {item_text}")
+                continue
+
+            ul_m = re.match(r'^[*\-+]\s+(.+)$', stripped)
+            if ul_m:
+                item_text = html.escape(ul_m.group(1))
+                out_lines.append(f"  • {item_text}")
+                continue
+
+            ol_m = re.match(r'^(\d+)\.\s+(.+)$', stripped)
+            if ol_m:
+                num = ol_m.group(1)
+                item_text = html.escape(ol_m.group(2))
+                out_lines.append(f"  {num}. {item_text}")
+                continue
+
+            out_lines.append(html.escape(line))
+
+        result = '\n'.join(out_lines)
+
+        # 5. Inline Formatting
+        result = re.sub(r'\*\*\*([^\*\n]+?)\*\*\*', r'<b><i>\1</i></b>', result)
+        result = re.sub(r'___([^_\n]+?)___', r'<b><i>\1</i></b>', result)
+        result = re.sub(r'\*\*\_([^\*\_\n]+?)\_\*\*', r'<b><i>\1</i></b>', result)
+        result = re.sub(r'\_\*\*([^\*\_\n]+?)\*\*\_', r'<b><i>\1</i></b>', result)
+
+        result = re.sub(r'\*\*([^\*\n]+?)\*\*', r'<b>\1</b>', result)
+        result = re.sub(r'(?<![a-zA-Z0-9])__([^_\n]+?)__(?![a-zA-Z0-9])', r'<b>\1</b>', result)
+
+        result = re.sub(r'(?<!\*)\*([^\*\n]+?)\*(?!\*)', r'<i>\1</i>', result)
+        result = re.sub(r'(?<![a-zA-Z0-9_])_([^_\n]+?)_(?![a-zA-Z0-9_])', r'<i>\1</i>', result)
+
+        result = re.sub(r'~~([^~\n]+?)~~', r'<s>\1</s>', result)
+
+        hl_bg = "#f6d32d" if is_dark else "#f9f06b"
+        result = re.sub(r'==([^=\n]+?)==', f"<span background='{hl_bg}' foreground='#111111'><b> \\1 </b></span>", result)
+
+        result = re.sub(r'&lt;u&gt;([\s\S]+?)&lt;/u&gt;', r'<u>\1</u>', result)
+        result = re.sub(r'&lt;br\s*/?&gt;', '\n', result)
+
+        # 6. Restore Placeholders
+        for i, placeholder in enumerate(inline_code_placeholders):
+            result = result.replace(f"@@INLINE_CODE_{i}@@", placeholder)
+
+        for i, placeholder in enumerate(code_placeholders):
+            result = result.replace(f"@@CODE_BLOCK_{i}@@", placeholder)
+
+        for i, placeholder in enumerate(math_placeholders):
+            result = result.replace(f"@@MATH_{i}@@", placeholder)
+
+        # 7. Also handle any remaining raw standalone LaTeX math expressions without dollar signs
+        if r'\frac' in result or r'\sqrt' in result or bool(re.search(r'\\[a-zA-Z]+', result)):
+            # Check for standalone LaTeX commands
+            for name, sym in cls.GREEK.items():
+                pattern = re.escape('\\' + name) + r'(?![a-zA-Z])'
+                result = re.sub(pattern, sym, result)
+            for name, sym in cls.SYMBOLS.items():
+                pattern = re.escape('\\' + name) + r'(?![a-zA-Z])'
+                result = re.sub(pattern, sym, result)
+
+        return result
 
 
 class FSRSCard:
@@ -920,6 +1287,16 @@ class DecksWindow(Adw.ApplicationWindow):
         btn_add_deck.connect("clicked", self.on_add_deck_clicked)
         header.pack_start(btn_add_deck)
 
+        # Import CSV Button
+        btn_import = Gtk.Button(icon_name="document-open-symbolic", tooltip_text="Import Cards (CSV/TSV)")
+        btn_import.connect("clicked", self.on_import_csv)
+        header.pack_start(btn_import)
+
+        # Export Current Deck to CSV Button
+        self.btn_export_deck = Gtk.Button(icon_name="document-save-symbolic", tooltip_text="Export Current Deck to CSV")
+        self.btn_export_deck.connect("clicked", self.on_export_current_deck_csv)
+        header.pack_start(self.btn_export_deck)
+
         # Delete Current Deck Button
         btn_del_deck = Gtk.Button(icon_name="user-trash-symbolic", tooltip_text="Delete Current Deck")
         btn_del_deck.connect("clicked", self.on_delete_current_deck_clicked)
@@ -937,17 +1314,12 @@ class DecksWindow(Adw.ApplicationWindow):
         btn_about.connect("clicked", self.show_about_dialog)
         header.pack_end(btn_about)
 
-        # 2. Import CSV Button
-        btn_import = Gtk.Button(icon_name="document-open-symbolic", tooltip_text="Import Cards (CSV/TSV)")
-        btn_import.connect("clicked", self.on_import_csv)
-        header.pack_end(btn_import)
-
-        # 3. Settings Button (Preferences & Daily Goals)
+        # Settings Button (Preferences & Daily Goals)
         self.btn_settings = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text="Preferences & Daily Goals")
         self.btn_settings.connect("clicked", self.on_open_preferences_dialog)
         header.pack_end(self.btn_settings)
 
-        # 4. Study Streak Badge (Leftmost in top-right group)
+        # Study Streak Badge (Leftmost in top-right group)
         self.btn_streak = Gtk.Button()
         self.btn_streak.add_css_class("streak-pill")
         self.btn_streak.set_tooltip_text("Continuous Daily Study Streak")
@@ -1213,6 +1585,13 @@ class DecksWindow(Adw.ApplicationWindow):
 
         if self.current_card:
             text = self.current_card.back if self.showing_answer else self.current_card.front
+            has_multiline = "\n" in text or bool(re.search(r'^[*\-+]\s|^#|\$\$|```', text, re.MULTILINE))
+            if has_multiline:
+                self.label_card_text.set_justify(Gtk.Justification.LEFT)
+                self.label_card_text.set_xalign(0.0)
+            else:
+                self.label_card_text.set_justify(Gtk.Justification.CENTER)
+                self.label_card_text.set_xalign(0.5)
             self.label_card_text.set_markup(self.get_card_font_markup(text))
 
         return GLib.SOURCE_REMOVE
@@ -1247,6 +1626,12 @@ class DecksWindow(Adw.ApplicationWindow):
         btn_new_card.add_css_class("suggested-action")
         btn_new_card.connect("clicked", self.on_new_card_dialog)
         toolbar.append(btn_new_card)
+
+        # Edit Selected Card Button
+        self.btn_edit_card = Gtk.Button(label="Edit Card", icon_name="document-edit-symbolic")
+        self.btn_edit_card.set_sensitive(False)
+        self.btn_edit_card.connect("clicked", self.on_edit_selected_card)
+        toolbar.append(self.btn_edit_card)
 
         # Reset Card Progress Button
         self.btn_reset_card = Gtk.Button(label="Reset Progress", icon_name="view-refresh-symbolic")
@@ -1474,6 +1859,10 @@ class DecksWindow(Adw.ApplicationWindow):
         if self.decks:
             self.current_deck_id = self.decks[0]["id"]
             self.load_cards_for_deck(self.current_deck_id)
+        else:
+            self.current_deck_id = None
+        if hasattr(self, 'btn_export_deck'):
+            self.btn_export_deck.set_sensitive(bool(self.decks))
 
     def on_deck_changed(self, dropdown, param):
         idx = dropdown.get_selected()
@@ -1482,6 +1871,8 @@ class DecksWindow(Adw.ApplicationWindow):
             self.load_cards_for_deck(self.current_deck_id)
             if self.view_stack.get_visible_child_name() == "browse":
                 self.refresh_browse_view()
+        if hasattr(self, 'btn_export_deck'):
+            self.btn_export_deck.set_sensitive(bool(self.current_deck_id))
 
     def load_cards_for_deck(self, deck_id: str):
         now = time.time()
@@ -1609,9 +2000,9 @@ class DecksWindow(Adw.ApplicationWindow):
         character density, and card box bounds:
         - Single/few characters (e.g. Japanese kana/kanji like 'ぞ', 'だ', 'た'):
           Displays prominently (56pt-68pt) with crisp contrast.
-        - Longer multi-sentence or paragraph text:
-          Auto-scales down progressively so that it wraps cleanly within 3-4 lines
-          and fits comfortably within the card boundary without clipping or overflowing.
+        - Longer multi-line answers with Markdown headers, bullet points, code blocks,
+          and LaTeX formulas: auto-scales progressively so content fits comfortably
+          within the card boundary while preserving formatting.
         """
         clean_text = text.strip() if text else ""
         if not clean_text:
@@ -1621,8 +2012,15 @@ class DecksWindow(Adw.ApplicationWindow):
         available_h = max(130, self.current_card_h - 130)
         char_count = len(clean_text)
 
-        # Baseline point size by character length
-        if char_count <= 3:
+        # Count effective lines
+        lines = clean_text.splitlines()
+
+        # Baseline point size by character length and line count
+        if len(lines) > 4 or char_count > 140:
+            pt = 16
+        elif len(lines) > 2 or char_count > 80:
+            pt = 19
+        elif char_count <= 3:
             pt = 66
         elif char_count <= 8:
             pt = 46
@@ -1635,20 +2033,19 @@ class DecksWindow(Adw.ApplicationWindow):
         elif char_count <= 120:
             pt = 18
         else:
-            pt = 15
+            pt = 16
 
-        # Progressively auto-scale down until the text fits in <= 4 wraps and doesn't exceed vertical card bounds
+        # Progressively auto-scale down until the text fits cleanly
         while pt > 11:
-            lines = clean_text.splitlines()
             total_wraps = 0
             for line in lines:
                 if not line:
                     total_wraps += 1
                     continue
-                cjk_chars = sum(1 for c in line if ord(c) > 0x2E80)
-                latin_chars = len(line) - cjk_chars
-                # Font metrics estimation for wrap prediction:
-                # CJK glyphs: ~1.20 * pt pixels, Latin glyphs: ~0.60 * pt pixels
+                # Strip Markdown/LaTeX markers for metric estimation
+                stripped_line = re.sub(r'[*_#`~=\$\\\<>]', '', line)
+                cjk_chars = sum(1 for c in stripped_line if ord(c) > 0x2E80)
+                latin_chars = len(stripped_line) - cjk_chars
                 line_pixels = (cjk_chars * pt * 1.20) + (latin_chars * pt * 0.60)
                 wraps = max(1, math.ceil(line_pixels / max(220, available_w - 16)))
                 total_wraps += wraps
@@ -1656,14 +2053,36 @@ class DecksWindow(Adw.ApplicationWindow):
             line_height = pt * 1.45
             total_height = total_wraps * line_height
 
-            # When text fits cleanly in 4 or fewer wraps and within available height, keep this font size
-            if total_wraps <= 4 and total_height <= available_h:
-                break
+            if len(lines) <= 4:
+                if total_wraps <= 4 and total_height <= available_h:
+                    break
+            else:
+                if total_height <= available_h:
+                    break
             pt -= 1
 
         pango_size = pt * 1024
+
+        # Render Markdown and LaTeX math
+        rendered_content = MarkdownMathParser.render_markdown_and_math(clean_text, is_dark=self.is_dark_mode)
+
+        has_rich = bool(re.search(r'[*_#`~=\$\\\<]', clean_text)) or "\n" in clean_text
+        if char_count <= 8 and not has_rich:
+            final_markup = f"<span size='{pango_size}' weight='bold'>{rendered_content}</span>"
+        else:
+            final_markup = f"<span size='{pango_size}'>{rendered_content}</span>"
+
+        # Verify markup validity with Pango
+        try:
+            ok, _, _, _ = Pango.parse_markup(final_markup, -1, '\0')
+            if ok:
+                return final_markup
+        except Exception:
+            pass
+
+        # Safe fallback in case of malformed custom tags
         escaped = GLib.markup_escape_text(clean_text)
-        return f"<span size='{pango_size}' weight='bold'>{escaped}</span>"
+        return f"<span size='{pango_size}'>{escaped}</span>"
 
     def update_card_ui_content(self, is_back: bool):
         dim_color = "#5e5c64" if not self.is_dark_mode else "#aaaaaa"
@@ -1702,6 +2121,13 @@ class DecksWindow(Adw.ApplicationWindow):
         if is_back:
             self.badge_side.set_text("ANSWER")
             self.card_box.add_css_class("card-back")
+            has_multiline = "\n" in card.back or bool(re.search(r'^[*\-+]\s|^#|\$\$|```', card.back, re.MULTILINE))
+            if has_multiline:
+                self.label_card_text.set_justify(Gtk.Justification.LEFT)
+                self.label_card_text.set_xalign(0.0)
+            else:
+                self.label_card_text.set_justify(Gtk.Justification.CENTER)
+                self.label_card_text.set_xalign(0.5)
             self.label_card_text.set_markup(self.get_card_font_markup(card.back))
             stats_raw = f"Repetitions: {card.repetitions}  •  Ease: {card.ease_factor:.2f}x  •  Interval: {format_interval(card.interval)}"
             stats_escaped = GLib.markup_escape_text(stats_raw)
@@ -1711,6 +2137,13 @@ class DecksWindow(Adw.ApplicationWindow):
         else:
             self.badge_side.set_text("QUESTION")
             self.card_box.remove_css_class("card-back")
+            has_multiline = "\n" in card.front or bool(re.search(r'^[*\-+]\s|^#|\$\$|```', card.front, re.MULTILINE))
+            if has_multiline:
+                self.label_card_text.set_justify(Gtk.Justification.LEFT)
+                self.label_card_text.set_xalign(0.0)
+            else:
+                self.label_card_text.set_justify(Gtk.Justification.CENTER)
+                self.label_card_text.set_xalign(0.5)
             self.label_card_text.set_markup(self.get_card_font_markup(card.front))
             self.label_subtext.set_text("Click card or press Space to reveal answer")
             self.btn_flip.set_label("Show Answer (Space)")
@@ -1811,8 +2244,9 @@ class DecksWindow(Adw.ApplicationWindow):
             filtered_count += 1
             row = Adw.ActionRow()
             row.card_id = c_id
-            row.set_title(GLib.markup_escape_text(front))
-            safe_back = GLib.markup_escape_text(back)
+            safe_front = GLib.markup_escape_text(front.replace('\n', ' '))
+            row.set_title(safe_front)
+            safe_back = GLib.markup_escape_text(back.replace('\n', ' ↵ '))
             row.set_subtitle(f"Answer: {safe_back}  •  Interval: {interval:.1f}d  •  Ease: {ease:.2f}x")
 
             # State badge
@@ -1828,7 +2262,7 @@ class DecksWindow(Adw.ApplicationWindow):
         dialog = Adw.MessageDialog(
             transient_for=self,
             heading="Create New Flashcard",
-            body="Enter the prompt/question and expected answer:"
+            body="Enter the prompt and answer (multi-line, Markdown & LaTeX math supported):"
         )
         dialog.add_response("cancel", "Cancel")
         dialog.add_response("save", "Save Card")
@@ -1838,19 +2272,32 @@ class DecksWindow(Adw.ApplicationWindow):
         vbox.set_margin_start(16)
         vbox.set_margin_end(16)
 
-        entry_front = Gtk.Entry(placeholder_text="Question / Prompt")
-        entry_back = Gtk.Entry(placeholder_text="Answer")
+        entry_front = Gtk.Entry(placeholder_text="Question / Prompt (supports Markdown & $LaTeX$)")
+
+        lbl_back = Gtk.Label(label="Answer / Card Back (Multi-line, Markdown, LaTeX supported):", halign=Gtk.Align.START)
+        lbl_back.add_css_class("dim-label")
+
+        scroll_back = Gtk.ScrolledWindow()
+        scroll_back.set_min_content_height(120)
+        scroll_back.set_vexpand(True)
+
+        text_back = Gtk.TextView()
+        text_back.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        scroll_back.set_child(text_back)
+
         entry_notes = Gtk.Entry(placeholder_text="Optional Study Notes")
 
         vbox.append(entry_front)
-        vbox.append(entry_back)
+        vbox.append(lbl_back)
+        vbox.append(scroll_back)
         vbox.append(entry_notes)
         dialog.set_extra_child(vbox)
 
         def on_resp(dlg, resp):
             if resp == "save":
                 front = entry_front.get_text().strip()
-                back = entry_back.get_text().strip()
+                buf = text_back.get_buffer()
+                back = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
                 notes = entry_notes.get_text().strip()
                 if front and back and self.current_deck_id:
                     new_id = f"c-{int(time.time())}"
@@ -1871,9 +2318,92 @@ class DecksWindow(Adw.ApplicationWindow):
         dialog.connect("response", on_resp)
         dialog.present()
 
+    def on_edit_selected_card(self, button):
+        selected_rows = self.browse_list_box.get_selected_rows()
+        if not selected_rows:
+            return
+        card_id = getattr(selected_rows[0], 'card_id', None)
+        if not card_id:
+            return
+
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT front, back, notes FROM cards WHERE id = ?", (card_id,))
+            row = cur.fetchone()
+        if not row:
+            return
+        front_val, back_val, notes_val = row
+
+        dialog = Adw.MessageDialog(
+            transient_for=self,
+            heading="Edit Flashcard",
+            body="Update question and answer (multi-line, Markdown & LaTeX supported):"
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("save", "Save Changes")
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        vbox.set_margin_start(16)
+        vbox.set_margin_end(16)
+
+        entry_front = Gtk.Entry(placeholder_text="Question / Prompt")
+        entry_front.set_text(front_val or "")
+
+        lbl_back = Gtk.Label(label="Answer / Card Back (Multi-line, Markdown, LaTeX supported):", halign=Gtk.Align.START)
+        lbl_back.add_css_class("dim-label")
+
+        scroll_back = Gtk.ScrolledWindow()
+        scroll_back.set_min_content_height(120)
+        scroll_back.set_vexpand(True)
+
+        text_back = Gtk.TextView()
+        text_back.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_back.get_buffer().set_text(back_val or "")
+        scroll_back.set_child(text_back)
+
+        entry_notes = Gtk.Entry(placeholder_text="Optional Study Notes")
+        entry_notes.set_text(notes_val or "")
+
+        vbox.append(entry_front)
+        vbox.append(lbl_back)
+        vbox.append(scroll_back)
+        vbox.append(entry_notes)
+        dialog.set_extra_child(vbox)
+
+        def on_resp(dlg, resp):
+            if resp == "save":
+                new_front = entry_front.get_text().strip()
+                buf = text_back.get_buffer()
+                new_back = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False).strip()
+                new_notes = entry_notes.get_text().strip()
+                if new_front and new_back:
+                    with get_db_connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute("""
+                            UPDATE cards
+                            SET front = ?, back = ?, notes = ?
+                            WHERE id = ?
+                        """, (new_front, new_back, new_notes, card_id))
+                        conn.commit()
+
+                    self.load_cards_for_deck(self.current_deck_id)
+                    self.refresh_browse_view()
+                    if self.current_card and self.current_card.card_id == card_id:
+                        self.current_card.front = new_front
+                        self.current_card.back = new_back
+                        self.current_card.notes = new_notes
+                        self.update_card_ui_content(self.showing_answer)
+            dlg.close()
+
+        dialog.connect("response", on_resp)
+        dialog.present()
+
     def on_browse_selection_changed(self, box):
         selected_rows = box.get_selected_rows()
         count = len(selected_rows)
+        if hasattr(self, 'btn_edit_card'):
+            self.btn_edit_card.set_sensitive(count == 1)
         if count > 1:
             self.btn_del_card.set_label(f"Delete ({count}) Cards")
             self.btn_reset_card.set_label(f"Reset ({count}) Cards")
@@ -2435,7 +2965,7 @@ class DecksWindow(Adw.ApplicationWindow):
         dialog.add_response("create", "Create Deck")
         dialog.set_response_appearance("create", Adw.ResponseAppearance.SUGGESTED)
 
-        entry = Gtk.Entry(placeholder_text="Deck Name (e.g. Japanese, System Design)")
+        entry = Gtk.Entry(placeholder_text="Deck Name")
         entry.set_margin_start(16)
         entry.set_margin_end(16)
         dialog.set_extra_child(entry)
@@ -2494,28 +3024,190 @@ class DecksWindow(Adw.ApplicationWindow):
     def on_file_selected(self, dialog, result):
         try:
             file = dialog.open_finish(result)
-            if file and self.current_deck_id:
-                path = file.get_path()
-                count = 0
-                with get_db_connection() as conn:
-                    cur = conn.cursor()
-                    with open(path, 'r', encoding='utf-8') as f:
-                        reader = csv.reader(f)
-                        for row in reader:
-                            if len(row) >= 2:
-                                c_id = f"c-{int(time.time())}-{count}"
-                                cur.execute("""
-                                    INSERT INTO cards (
-                                        id, deck_id, front, back, notes, ease_factor, interval,
-                                        repetitions, lapses, state, due_date, stability, difficulty, last_review
-                                    ) VALUES (?, ?, ?, ?, ?, 2.5, 0.0, 0, 0, 'new', ?, 0.4, 5.0, 0.0)
-                                """, (c_id, self.current_deck_id, row[0], row[1], row[2] if len(row) > 2 else "", time.time()))
-                                count += 1
-                    conn.commit()
-                self.load_cards_for_deck(self.current_deck_id)
-                self.refresh_browse_view()
+        except Exception as e:
+            # User dismissed or closed the file chooser (e.g. exit button or cancel)
+            err_str = str(e).lower()
+            if "dismissed" in err_str or "cancel" in err_str:
+                return
+            err_dlg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Import Failed",
+                body=f"An error occurred while opening the file dialog:\n{e}"
+            )
+            err_dlg.add_response("ok", "OK")
+            err_dlg.present()
+            return
+
+        if not file or not self.current_deck_id:
+            return
+
+        try:
+            path = file.get_path()
+            count = 0
+
+            # Robust multi-encoding reader (UTF-8, UTF-8 with BOM, Latin-1)
+            content = None
+            for enc in ['utf-8-sig', 'utf-8', 'latin-1']:
+                try:
+                    with open(path, 'r', encoding=enc) as f:
+                        content = f.read()
+                    break
+                except UnicodeDecodeError:
+                    continue
+
+            if content is None:
+                raise ValueError("Could not decode CSV file with supported encodings (UTF-8 / Latin-1).")
+
+            # Detect delimiter (comma, tab, semicolon)
+            sample = content[:4096]
+            try:
+                dialect = csv.Sniffer().sniff(sample, delimiters=',\t;')
+            except Exception:
+                dialect = csv.excel
+
+            with get_db_connection() as conn:
+                cur = conn.cursor()
+                reader = csv.reader(io.StringIO(content), dialect)
+                for row in reader:
+                    if not row or not any(col.strip() for col in row):
+                        continue
+                    if len(row) >= 2:
+                        front = row[0].strip()
+                        # Columns from index 1 onwards are concatenated with \n for the back
+                        back_cols = list(row[1:])
+                        # Strip trailing empty columns
+                        while back_cols and not back_cols[-1].strip():
+                            back_cols.pop()
+                        if not back_cols:
+                            continue
+
+                        # Convert literal '\\n' sequences into actual newlines, then join columns with '\n'
+                        back_lines = [col.replace('\\n', '\n').strip() for col in back_cols]
+                        back = "\n".join(back_lines)
+
+                        c_id = f"c-{int(time.time())}-{count}"
+                        cur.execute("""
+                            INSERT INTO cards (
+                                id, deck_id, front, back, notes, ease_factor, interval,
+                                repetitions, lapses, state, due_date, stability, difficulty, last_review
+                            ) VALUES (?, ?, ?, ?, '', 2.5, 0.0, 0, 0, 'new', ?, 0.4, 5.0, 0.0)
+                        """, (c_id, self.current_deck_id, front, back, time.time()))
+                        count += 1
+                conn.commit()
+
+            self.load_cards_for_deck(self.current_deck_id)
+            self.refresh_browse_view()
+
+            # Native confirmation dialog
+            msg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Import Complete",
+                body=f"Successfully imported {count} flashcard(s) into this deck.\n\n"
+                     "• Columns 2+ are formatted as multi-line answers\n"
+                     "• Markdown formatting is active\n"
+                     "• LaTeX math expressions are rendered"
+            )
+            msg.add_response("ok", "Done")
+            msg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            msg.present()
         except Exception as e:
             print("Import error:", e)
+            err_dlg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Import Failed",
+                body=f"An error occurred while importing the CSV:\n{e}"
+            )
+            err_dlg.add_response("ok", "OK")
+            err_dlg.present()
+
+    def on_export_current_deck_csv(self, button):
+        if not self.current_deck_id:
+            return
+
+        deck_name = "deck"
+        for d in self.decks:
+            if d["id"] == self.current_deck_id:
+                deck_name = d["name"]
+                break
+
+        safe_name = re.sub(r'[/\\?%*:|"<>]', '_', deck_name).strip() or "deck"
+        initial_filename = f"{safe_name}.csv"
+
+        dialog = Gtk.FileDialog(title=f"Export '{deck_name}' to CSV")
+        dialog.set_initial_name(initial_filename)
+        dialog.save(self, None, self.on_export_csv_selected)
+
+    def on_export_csv_selected(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+        except Exception as e:
+            # User dismissed or closed file chooser
+            err_str = str(e).lower()
+            if "dismissed" in err_str or "cancel" in err_str:
+                return
+            err_dlg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Export Failed",
+                body=f"An error occurred while choosing the save location:\n{e}"
+            )
+            err_dlg.add_response("ok", "OK")
+            err_dlg.present()
+            return
+
+        if not file or not self.current_deck_id:
+            return
+
+        try:
+            path = file.get_path()
+            if not path:
+                return
+            if not path.lower().endswith(".csv"):
+                path += ".csv"
+
+            with get_db_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT front, back, notes FROM cards
+                    WHERE deck_id = ?
+                    ORDER BY rowid ASC
+                """, (self.current_deck_id,))
+                rows = cur.fetchall()
+
+            count = len(rows)
+            with open(path, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f)
+                for front, back, notes in rows:
+                    back_lines = [line.strip() for line in (back or "").splitlines() if line.strip()]
+                    if not back_lines:
+                        back_lines = [(back or "").strip()]
+                    row = [(front or "").strip()] + back_lines
+                    if notes and notes.strip():
+                        row.append(notes.strip())
+                    writer.writerow(row)
+
+            deck_title = "Selected Deck"
+            for d in self.decks:
+                if d["id"] == self.current_deck_id:
+                    deck_title = d["name"]
+                    break
+
+            msg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Export Complete",
+                body=f"Successfully exported {count} card(s) from '{deck_title}' to:\n\n{os.path.basename(path)}"
+            )
+            msg.add_response("ok", "Done")
+            msg.set_response_appearance("ok", Adw.ResponseAppearance.SUGGESTED)
+            msg.present()
+        except Exception as e:
+            print("Export error:", e)
+            err_dlg = Adw.MessageDialog(
+                transient_for=self,
+                heading="Export Failed",
+                body=f"An error occurred while exporting the deck:\n{e}"
+            )
+            err_dlg.add_response("ok", "OK")
+            err_dlg.present()
 
     def on_export_backup_json(self, button):
         try:

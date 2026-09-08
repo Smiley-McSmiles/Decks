@@ -23,7 +23,9 @@
 - 🎯 **Geometric Render Centering**: Built with `Gtk.CenterBox` ensuring cards remain centered in the render stage across any window size or display scaling factor.
 - 🎨 **Adaptive Libadwaita Design**: Native GNOME 45+ integration with dark/light style adaptation, rounded window corners, responsive view switchers, and standardized dialogs.
 - ℹ️ **GNOME Standard About Page**: Integrated `Adw.AboutWindow` showcasing release version, MIT licensing, author attribution, and developer links.
-- 🔍 **Card Browser & Search**: Instant filtering across question prompts, answers, and deck collections with support for card creation, editing, and progress resets.
+- 📝 **Markdown & LaTeX Math Formatting**: Native, zero-dependency rendering for full Markdown (headers `#`, bold `**`, italic `*`, strikethrough `~~`, highlight `==`, code blocks, blockquotes, task lists, bullet & ordered lists) and LaTeX math (`$...$`, `$$...$$`, fractions `\frac{a}{b}`, roots `\sqrt`, Greek letters, calculus symbols, and matrices).
+- 📑 **Multi-Line Card Backs & CSV Flexibility**: Import CSV files where 3rd, 4th, and subsequent columns automatically become clean, newline-separated lines on the card back. Full support for literal `\n` line breaks and multi-line card editing.
+- 🔍 **Card Browser, Editor & Search**: Instant filtering across question prompts, answers, and deck collections with dedicated dialogs for card creation, multi-line editing, and progress resets.
 - 📊 **Detailed Statistics & Analytics**: Real-time tracking of retention rates, daily review streaks (🔥), FSRS average difficulty, maturity breakdowns, and review audit trails.
 - 💾 **Data Safety & Portability**: SQLite backend with Write-Ahead Logging (WAL) and busy timeout protection, one-click CSV/TSV card imports, and full JSON backup/restore.
 
